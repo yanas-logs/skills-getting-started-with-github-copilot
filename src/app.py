@@ -1,3 +1,18 @@
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
+
+app = FastAPI()
+
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+
+@app.get("/")
+async def serve_index():
+    index_path = os.path.join("src", "static", "index.html")
+    return FileResponse(index_path)
+
 # In-memory activity database
 activities = {
     "Chess Club": {
@@ -58,3 +73,21 @@ activities = {
         "participants": []
     }
 }
+
+# Example endpoint to get activities
+@app.get("/activities")
+async def get_activities():
+    return activities
+
+# Example endpoint to sign up for an activity
+@app.post("/activities/{activity_name}/signup")
+async def signup(activity_name: str, email: str):
+    activity = activities.get(activity_name)
+    if not activity:
+        return JSONResponse(status_code=404, content={"detail": "Activity not found"})
+    if email in activity["participants"]:
+        return JSONResponse(status_code=400, content={"detail": "Already signed up"})
+    if len(activity["participants"]) >= activity["max_participants"]:
+        return JSONResponse(status_code=400, content={"detail": "Activity is full"})
+    activity["participants"].append(email)
+    return {"message": f"Signed up {email} for {activity_name}"}
